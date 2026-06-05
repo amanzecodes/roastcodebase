@@ -11,3 +11,101 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User {
+  id              String   @id @default(uuid())
+  githubId        String   @unique @map("github_id")
+  username        String
+  email           String?
+  avatarUrl       String?  @map("avatar_url")
+  accessToken     String   @map("access_token")
+  roastCountToday Int      @default(0) @map("roast_count_today")
+  roastCountDate  DateTime @default(now()) @map("roast_count_date") @db.Date
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  roasts Roast[]
+
+  @@map("users")
+}
+
+model Roast {
+  id              String      @id @default(uuid())
+  userId          String      @map("user_id")
+  repoOwner       String      @map("repo_owner")
+  repoName        String      @map("repo_name")
+  repoUrl         String      @map("repo_url")
+  repoDescription String?     @map("repo_description")
+  defaultBranch   String?     @map("default_branch")
+  fileCount       Int?        @map("file_count")
+  totalBytes      Int?        @map("total_bytes")
+  status          RoastStatus @default(PENDING)
+  result          Json?
+  errorMessage    String?     @map("error_message")
+  isPublic        Boolean     @default(true) @map("is_public")
+  shareSlug       String?     @unique @map("share_slug")
+  startedAt       DateTime?   @map("started_at")
+  completedAt     DateTime?   @map("completed_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files            RoastFile[]
+  securityFindings SecurityFinding[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([shareSlug])
+  @@map("roasts")
+}
+
+model RoastFile {
+  id         String   @id @default(uuid())
+  roastId    String   @map("roast_id")
+  filePath   String   @map("file_path")
+  language   String?
+  sizeBytes  Int?     @map("size_bytes")
+  wasScanned Boolean  @default(false) @map("was_scanned")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  roast Roast @relation(fields: [roastId], references: [id], onDelete: Cascade)
+
+  @@index([roastId])
+  @@map("roast_files")
+}
+
+model SecurityFinding {
+  id          String          @id @default(uuid())
+  roastId     String          @map("roast_id")
+  severity    FindingSeverity
+  category    String
+  title       String
+  description String
+  filePath    String?         @map("file_path")
+  lineNumber  Int?            @map("line_number")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  roast Roast @relation(fields: [roastId], references: [id], onDelete: Cascade)
+
+  @@index([roastId])
+  @@index([severity])
+  @@map("security_findings")
+}
+
+enum RoastStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+
+  @@map("roast_status")
+}
+
+enum FindingSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+
+  @@map("finding_severity")
+}
