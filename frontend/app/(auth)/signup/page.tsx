@@ -19,10 +19,10 @@ const page = () => {
           </div>
 
           <h1 className="font-bold text-3xl">
-            Think Your Code Is Good? Prove It.
+            Think Your CodeBase Is Good? Prove It.
           </h1>
           <div className="flex items-center justify-center">
-          <p>Get Brutally Honest Feedback on Your Code.</p>
+          <p>Get Brutally Honest Feedback on Your CodeBase.</p>
           </div>
         </div>
 
