@@ -2,6 +2,8 @@ import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import QueryProvider from "@/providers/QueryProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -30,7 +32,11 @@ export default function RootLayout({
       className={`${dmSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col dark">
-        <main>{children}</main>
+        <main>
+          <QueryProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryProvider>
+        </main>
         <Toaster />
       </body>
     </html>
