@@ -19,6 +19,7 @@ model User {
   email           String?
   avatarUrl       String?  @map("avatar_url")
   accessToken     String   @map("access_token")
+  installationId  String?  @map("installation_id")
   roastCountToday Int      @default(0) @map("roast_count_today")
   roastCountDate  DateTime @default(now()) @map("roast_count_date") @db.Date
   createdAt       DateTime @default(now()) @map("created_at")
