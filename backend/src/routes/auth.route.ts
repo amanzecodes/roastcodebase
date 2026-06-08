@@ -16,7 +16,6 @@ passport.use(
   ),
 );
 
-
 router.use(passport.initialize());
 
 router.get(
@@ -34,6 +33,8 @@ router.get(
 );
 
 router.get("/me", authController.getMe);
+
+router.get("/github/install", authController.installGitHubApp);
 
 router.post("/logout", authController.logout);
 

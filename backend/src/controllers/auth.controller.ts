@@ -102,6 +102,30 @@ export const getMe = async (req: Request, res: Response) => {
 };
 
 export const logout = (req: Request, res: Response) => {
-  res.clearCookie("token");
+  res.clearCookie("singe_authentication_token");
   res.json({ success: true });
+};
+
+export const installGitHubApp = async (req: Request, res: Response) => {
+  const { installation_id } = req.query;
+  const token = req.cookies.singe_authentication_token;
+
+  if (!token || !installation_id) {
+    res.redirect(`${process.env.CLIENT_URL}/login?error=missing_params`);
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: string;
+    };
+    await prisma.user.update({
+      where: { id: payload.id },
+      data: { installationId: installation_id as string },
+    });
+
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+  } catch (error) {
+    res.redirect(`${process.env.CLIENT_URL}/login?error=install_failed`);
+  }
 };
