@@ -1,7 +1,8 @@
-import { type Request, type Response } from "express";
-import { type Profile } from "passport-github2";
-import { prisma } from "../lib/prisma.js";
-import jwt from "jsonwebtoken";
+import { type Request, type Response, type NextFunction } from 'express';
+import { type Profile } from 'passport-github2';
+import { prisma } from '../lib/prisma.js';
+import jwt from 'jsonwebtoken';
+import { AppError } from '../types/errors.js';
 
 export interface GitHubUser {
   id: string;
@@ -54,31 +55,30 @@ export const githubCallbackHandler = (req: Request, res: Response) => {
   const token = jwt.sign(
     { id: user.id, username: user.username },
     process.env.JWT_SECRET!,
-    { expiresIn: "7d" },
+    { expiresIn: '7d' },
   );
 
-  res.cookie("singe_authentication_token", token, {
+  res.cookie('singe_authentication_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
   res.redirect(`${process.env.CLIENT_URL}/dashboard`);
 };
 
-export const getMe = async (req: Request, res: Response) => {
+export const getMe = async (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.singe_authentication_token;
 
   if (!token) {
-    res.status(401).json({ error: "Not authenticated" });
+    next(new AppError(401, 'NOT_AUTHENTICATED', 'Not authenticated'));
     return;
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: string;
-    };
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
@@ -91,18 +91,18 @@ export const getMe = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      next(new AppError(404, 'USER_NOT_FOUND', 'User not found'));
       return;
     }
 
     res.json(user);
   } catch {
-    res.status(401).json({ error: "Invalid token" });
+    next(new AppError(401, 'INVALID_TOKEN', 'Invalid token'));
   }
 };
 
-export const logout = (req: Request, res: Response) => {
-  res.clearCookie("singe_authentication_token");
+export const logout = (_req: Request, res: Response) => {
+  res.clearCookie('singe_authentication_token');
   res.json({ success: true });
 };
 
@@ -116,16 +116,14 @@ export const installGitHubApp = async (req: Request, res: Response) => {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: string;
-    };
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
     await prisma.user.update({
       where: { id: payload.id },
       data: { installationId: installation_id as string },
     });
 
     res.redirect(`${process.env.CLIENT_URL}/dashboard`);
-  } catch (error) {
+  } catch {
     res.redirect(`${process.env.CLIENT_URL}/login?error=install_failed`);
   }
 };

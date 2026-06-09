@@ -1,30 +1,28 @@
-import {type Request, type Response} from "express"
+import { type Request, type Response, type NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
-import getAppOctokit from "../util/getAppOctokit.js";
-import { Octokit } from "@octokit/rest";
+import getAppOctokit from '../util/getAppOctokit.js';
+import { Octokit } from '@octokit/rest';
+import { AppError } from '../types/errors.js';
 
-export const ListRepos = async (req: Request, res: Response) => {
- try {
-
+export const ListRepos = async (req: Request, res: Response, next: NextFunction) => {
+  try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId! },
       select: { installationId: true, username: true },
     });
 
     if (!user?.installationId) {
-      res.status(403).json({ error: 'GitHub App not installed', code: 'NOT_INSTALLED' });
+      next(new AppError(403, 'NOT_INSTALLED', 'GitHub App not installed'));
       return;
     }
 
     const appOctokit = getAppOctokit();
 
-    // Get an installation access token
     const { token } = await appOctokit.auth({
       type: 'installation',
       installationId: parseInt(user.installationId),
     }) as { token: string };
 
-    // Use that token to list repos
     const octokit = new Octokit({ auth: token });
 
     const { data } = await octokit.apps.listReposAccessibleToInstallation({
@@ -44,7 +42,6 @@ export const ListRepos = async (req: Request, res: Response) => {
 
     res.json({ repos });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch repos' });
+    next(new AppError(500, 'FETCH_REPOS_FAILED', 'Failed to fetch repositories'));
   }
-}
+};

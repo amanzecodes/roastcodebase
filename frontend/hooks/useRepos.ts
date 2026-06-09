@@ -2,8 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { type ApiError } from '@/lib/errors';
 
-interface Repo {
+export interface Repo {
   id: number;
   name: string;
   fullName: string;
@@ -20,7 +21,7 @@ async function fetchRepos(): Promise<Repo[]> {
 }
 
 export function useRepos() {
-  const { data: repos, isLoading, isError, error } = useQuery({
+  const { data: repos, isLoading, isError, error } = useQuery<Repo[], ApiError>({
     queryKey: ['repos'],
     queryFn: fetchRepos,
     retry: false,
