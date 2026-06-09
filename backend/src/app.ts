@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.route.js";
+import repoRoute from "./routes/repos.route.js";
 
 const app = express();
 
@@ -25,5 +26,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/repos", repoRoute)
 
 export default app;
