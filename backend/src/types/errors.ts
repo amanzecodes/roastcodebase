@@ -4,7 +4,13 @@ export type ErrorCode =
   | 'NOT_INSTALLED'
   | 'USER_NOT_FOUND'
   | 'FETCH_REPOS_FAILED'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  | 'MISSING_PARAMS'
+  | 'RATE_LIMIT'
+  | 'START_ROAST_FAILED'
+  | 'NOT_FOUND'
+  | 'FORBIDDEN'
+  | 'FETCH_ROAST_FAILED'
 
 export class AppError extends Error {
   constructor(
