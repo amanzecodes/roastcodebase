@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.route.js";
 import repoRoute from "./routes/repos.route.js";
+import roastRoute from "./routes/roast.route.js"
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -25,6 +26,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/repos", repoRoute);
+app.use("/roast", roastRoute)
 
 app.use(errorHandler);
 
