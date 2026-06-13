@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRepos } from '@/hooks/useRepos';
 import { RepoCard } from './_components/RepoCard';
 import { EmptyState } from './_components/EmptyState';
+import { useRoastRepo } from '@/hooks/useRoastRepo';
 
 const GITHUB_APP_INSTALL_URL = 'https://github.com/apps/roastcodebase/installations/new';
 
@@ -17,6 +18,9 @@ export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { repos, isLoading: reposLoading, isError, error } = useRepos();
   const router = useRouter();
+  const { mutate: startRoast, isPending, variables, error: roastError } = useRoastRepo({
+    onSuccess: ({ roastId }) => router.push(`/roast/${roastId}`),
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -98,11 +102,26 @@ export default function DashboardPage() {
             )}
           </div>
         ) : repos && repos.length > 0 ? (
-          <div className="grid gap-3">
-            {repos.map((repo) => (
-              <RepoCard key={repo.id} repo={repo} />
-            ))}
-          </div>
+          <>
+            {roastError && (
+              <div className="mb-4 rounded-lg border border-red-900/40 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+                {roastError.userMessage}
+              </div>
+            )}
+            <div className="grid gap-3">
+              {repos.map((repo) => (
+                <RepoCard
+                  key={repo.id}
+                  repo={repo}
+                  isPending={isPending && variables?.repoName === repo.fullName.split('/')[1]}
+                  onRoast={() => {
+                    const [repoOwner, repoName] = repo.fullName.split('/')
+                    startRoast({ repoOwner, repoName, defaultBranch: repo.defaultBranch })
+                  }}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState />
         )}

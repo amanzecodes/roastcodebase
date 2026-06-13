@@ -2,7 +2,13 @@ import { type Repo } from '@/hooks/useRepos';
 import { LANGUAGE_COLORS } from '@/lib/languageColors';
 import { timeAgo } from '@/lib/timeAgo';
 
-export function RepoCard({ repo }: { repo: Repo }) {
+interface RepoCardProps {
+  repo: Repo
+  onRoast: () => void
+  isPending: boolean
+}
+
+export function RepoCard({ repo, onRoast, isPending }: RepoCardProps) {
   const langColor = repo.language ? (LANGUAGE_COLORS[repo.language] ?? '#888888') : null;
 
   return (
@@ -19,8 +25,12 @@ export function RepoCard({ repo }: { repo: Repo }) {
             </span>
           )}
         </div>
-        <button className="shrink-0 rounded-lg cursor-pointer bg-[#FF4500] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_4px_0_0_#bf3400] transition-all hover:bg-[#e03e00] active:translate-y-1 active:shadow-none">
-          Roast it
+        <button
+          onClick={onRoast}
+          disabled={isPending}
+          className="shrink-0 rounded-lg cursor-pointer bg-[#FF4500] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_4px_0_0_#bf3400] transition-all hover:bg-[#e03e00] active:translate-y-1 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:active:shadow-[0_4px_0_0_#bf3400]"
+        >
+          {isPending ? 'Roasting...' : 'Roast it'}
         </button>
       </div>
 

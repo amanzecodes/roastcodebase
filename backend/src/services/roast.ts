@@ -107,7 +107,7 @@ export async function generateRoast(
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 2000,
+    max_tokens: 20000,
     messages: [
       {
         role: "user",
