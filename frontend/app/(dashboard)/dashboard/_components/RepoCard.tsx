@@ -1,11 +1,12 @@
+import Link from 'next/link';
 import { type Repo } from '@/hooks/useRepos';
 import { LANGUAGE_COLORS } from '@/lib/languageColors';
 import { timeAgo } from '@/lib/timeAgo';
 
 interface RepoCardProps {
   repo: Repo
-  onRoast: () => void
-  isPending: boolean
+  onRoast?: () => void
+  isPending?: boolean
 }
 
 export function RepoCard({ repo, onRoast, isPending }: RepoCardProps) {
@@ -25,13 +26,22 @@ export function RepoCard({ repo, onRoast, isPending }: RepoCardProps) {
             </span>
           )}
         </div>
-        <button
-          onClick={onRoast}
-          disabled={isPending}
-          className="shrink-0 rounded-lg cursor-pointer bg-[#FF4500] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_4px_0_0_#bf3400] transition-all hover:bg-[#e03e00] active:translate-y-1 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:active:shadow-[0_4px_0_0_#bf3400]"
-        >
-          {isPending ? 'Roasting...' : 'Roast it'}
-        </button>
+        {repo.roast ? (
+          <Link
+            href={`/roast/${repo.roast.shareSlug ?? repo.roast.id}`}
+            className="shrink-0 rounded-lg bg-[#1E1E1E] border border-[#3A3A3A] px-3 py-1.5 text-xs font-semibold text-[#EDEDED] transition-all hover:bg-[#2A2A2A] hover:border-[#555]"
+          >
+            View Roast
+          </Link>
+        ) : (
+          <button
+            onClick={onRoast}
+            disabled={isPending}
+            className="shrink-0 rounded-lg cursor-pointer bg-[#FF4500] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_4px_0_0_#bf3400] transition-all hover:bg-[#e03e00] active:translate-y-1 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:active:shadow-[0_4px_0_0_#bf3400]"
+          >
+            {isPending ? 'Roasting...' : 'Roast it'}
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-4 text-xs text-[#666666]">

@@ -13,6 +13,11 @@ export interface Repo {
   starCount: number;
   updatedAt: string;
   defaultBranch: string;
+  roast: {
+    id: string;
+    shareSlug: string | null;
+    createdAt: string;
+  } | null;
 }
 
 async function fetchRepos(): Promise<Repo[]> {
