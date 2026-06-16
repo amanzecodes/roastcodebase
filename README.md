@@ -2,43 +2,47 @@
 
 > Your code will be judged. Harshly.
 
-Singe connects to your GitHub repositories and delivers brutally honest, AI-powered code reviews. No sugar-coating, no hand-holding — just a clear-eyed breakdown of what's wrong, why it matters, and what you should fix.
+Singe connects to your GitHub repositories and delivers brutally honest, AI-powered code reviews. It scans your codebase, identifies security vulnerabilities, anti-patterns, and code quality issues, then classifies you as a developer — no sugar-coating, no participation trophies.
 
 ---
 
-## What it does
+## How it works
 
-1. **Sign in** with your GitHub account
-2. **Install** the Singe GitHub App on any repo you want reviewed
-3. **Trigger a roast** — Singe fetches your code, scans it, and runs it through Claude AI
-4. **Read the verdict** — quality issues, security findings, anti-patterns, and more, organized by severity
-
-Roasts track status in real time (pending → processing → done) and can be shared publicly via a unique link.
+1. **Sign in** with your GitHub account via OAuth
+2. **Install** the Singe GitHub App on any repository you want reviewed
+3. **Trigger a roast** from your dashboard — Singe fetches your code and sends it through Claude AI
+4. **Track progress** in real time on a live status page (queued → scanning → roasting)
+5. **Read the verdict** — an overall score, code quality score, security score, funny observations, a developer classification, and categorized security findings
+6. **Share** your roast via a unique public link
 
 ---
 
 ## Tech stack
 
-| Layer | Technologies |
+| Layer | Technology |
 |---|---|
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS v4, React Query, Axios |
-| Backend | Node.js, Express v5, TypeScript |
-| Database | PostgreSQL (Neon) via Prisma ORM |
+| Frontend | Next.js 16.2.7, React 19, TypeScript, Tailwind CSS v4 |
+| State / Data fetching | TanStack Query v5, Axios |
+| Backend | Express v5, TypeScript, Node.js 18+ |
+| Database | PostgreSQL (Neon serverless) via Prisma ORM v7 |
 | Auth | GitHub OAuth 2.0 (Passport.js) + JWT (HTTP-only cookie) |
-| GitHub integration | Octokit (`@octokit/rest`, `@octokit/auth-app`) |
-| AI | Anthropic SDK (Claude) |
+| GitHub integration | Octokit (`@octokit/app`, `@octokit/rest`) |
+| AI | Anthropic SDK — Claude Opus 4.8 (forced tool calling) |
 
 ---
 
 ## Features
 
 - **GitHub OAuth login** — one click, no passwords
-- **GitHub App integration** — fine-grained repo access, installable per repo
-- **Multi-repo dashboard** — all your connected repos with language, stars, and last-updated metadata
-- **AI-powered roasts** — async code analysis with per-file scanning and structured feedback
-- **Security findings** — categorized by severity (Critical → Info)
-- **Shareable results** — public/private toggle with unique share slugs
-- **Rate limiting** — daily roast quota tracked per user
+- **GitHub App integration** — fine-grained, per-repository access via installation tokens
+- **Multi-repo dashboard** — all connected repos with language, stars, and last-updated metadata
+- **Async roast pipeline** — fire-and-forget job with concurrency cap (3 max), 5-minute timeout per job, and automatic stuck-job recovery on restart
+- **Structured AI output** — Claude is forced via tool use to return a validated, typed result; no free-form JSON parsing
+- **Security findings** — stored separately and categorized by severity: Critical, High, Medium, Low, Info
+- **Developer classification** — ten archetypes from "Junior Software Engineer" to "Intern Escaped Into Production"
+- **Live status page** — animated progress indicator with step-by-step feedback
+- **Shareable results** — unique 8-character slug per roast, public/private toggle
+- **Rate limiting** — 3 roasts per user per day
 
 ---
 
@@ -47,18 +51,35 @@ Roasts track status in real time (pending → processing → done) and can be sh
 ```
 roastcodebase/
 ├── backend/
-│   ├── prisma/           # Database schema and migrations
+│   ├── prisma/
+│   │   └── schema.prisma         # Database schema
 │   └── src/
-│       ├── controllers/  # Route handlers (auth, repos, roasts)
-│       ├── middleware/   # Auth (JWT), error handling
-│       ├── routes/       # Express route definitions
-│       └── server.ts     # App entry point
+│       ├── controllers/
+│       │   ├── auth.controller.ts
+│       │   ├── repo.controller.ts
+│       │   └── roast.controller.ts
+│       ├── middleware/
+│       │   ├── auth.ts            # JWT verification
+│       │   └── errorHandler.ts
+│       ├── routes/
+│       │   ├── auth.route.ts
+│       │   ├── repos.route.ts
+│       │   └── roast.route.ts
+│       ├── services/
+│       │   ├── github.ts          # Repo file fetching
+│       │   └── roast.ts           # Claude AI integration
+│       ├── util/
+│       │   └── validateRoastResult.ts
+│       └── server.ts              # Entry point + boot sequence
 └── frontend/
     ├── app/
-    │   ├── (auth)/login  # GitHub login page
-    │   └── (dashboard)/  # Authenticated dashboard and repo views
-    ├── hooks/            # useAuth, useRepos, etc.
-    └── lib/              # API client, error types, utilities
+    │   ├── (auth)/login/          # GitHub login page
+    │   ├── (dashboard)/dashboard/ # Main dashboard
+    │   └── roast/
+    │       ├── [id]/              # Roast result page
+    │       └── status/[roastId]/  # Live status page
+    ├── hooks/                     # useAuth, useRepos, useGetRoast, etc.
+    └── lib/                       # API client, error types
 ```
 
 ---
@@ -68,60 +89,97 @@ roastcodebase/
 ### Prerequisites
 
 - Node.js 18+
-- A PostgreSQL database ([Neon](https://neon.tech) works great)
-- A GitHub OAuth App
-- A GitHub App (for repo access)
+- A PostgreSQL database — [Neon](https://neon.tech) is recommended
+- A **GitHub OAuth App** (for user login)
+- A **GitHub App** (for repository access)
 - An [Anthropic API key](https://console.anthropic.com)
 
-### 1. Clone and install
+---
+
+### 1. Clone and install dependencies
 
 ```bash
 git clone https://github.com/your-username/roastcodebase.git
 cd roastcodebase
 
+# Install backend dependencies
 cd backend && npm install
+
+# Install frontend dependencies
 cd ../frontend && npm install
 ```
 
-### 2. Configure environment variables
+---
+
+### 2. Create a GitHub OAuth App
+
+1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App**
+2. Set **Authorization callback URL** to `http://localhost:8000/auth/github/callback`
+3. Copy the **Client ID** and **Client Secret**
+
+---
+
+### 3. Create a GitHub App
+
+1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
+2. Set **Callback URL** to `http://localhost:8000/auth/github/install`
+3. Under **Permissions**, grant **Repository contents: Read-only**
+4. Generate and download a **private key** (`.pem` file)
+5. Note the **App ID**, **Client ID**, and **App slug** (the URL slug from `https://github.com/apps/<slug>`)
+
+---
+
+### 4. Configure environment variables
 
 **`backend/.env`**
 ```env
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://user:password@host/dbname
+
+# GitHub OAuth App
 GITHUB_CLIENT_ID=your_oauth_client_id
 GITHUB_CLIENT_SECRET=your_oauth_client_secret
-JWT_SECRET=a_long_random_secret
-CLIENT_URL=http://localhost:3000
-PORT=8000
-ANTHROPIC_API_KEY=sk-ant-...
-NODE_ENV=development
+
+# GitHub App
 GITHUB_APP_ID=your_app_id
 GITHUB_APP_CLIENT_ID=your_app_client_id
-GITHUB_APP_CLIENT_SECRET=your_app_client_secret
 GITHUB_APP_PRIVATE_KEY_PATH=./github-app.private-key.pem
+GITHUB_APP_SLUG=your_app_slug
+
+# Auth
+JWT_SECRET=a_long_random_string_minimum_32_characters
+
+# Services
+ANTHROPIC_API_KEY=sk-ant-...
+CLIENT_URL=http://localhost:3000
+PORT=8000
+NODE_ENV=development
 ```
 
-Place your GitHub App's private key at `backend/github-app.private-key.pem`.
+Place the downloaded GitHub App private key at `backend/github-app.private-key.pem`.
 
 **`frontend/.env`**
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### 3. Set up the database
+---
+
+### 5. Set up the database
 
 ```bash
 cd backend
 npx prisma migrate dev
 ```
 
-### 4. Run the app
+---
+
+### 6. Run the application
 
 ```bash
-# Terminal 1 — backend
+# Terminal 1 — backend (http://localhost:8000)
 cd backend && npm run dev
 
-# Terminal 2 — frontend
+# Terminal 2 — frontend (http://localhost:3000)
 cd frontend && npm run dev
 ```
 
@@ -131,24 +189,82 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Authentication flow
 
-1. User clicks **Continue with GitHub** → redirected to GitHub OAuth
-2. On callback, a JWT is issued and stored as an HTTP-only cookie (7-day expiry)
-3. User installs the **Singe GitHub App** to grant repo access
-4. The `installation_id` is saved to the user record and used to fetch repos via GitHub App auth
+```
+User → /auth/github → GitHub OAuth → /auth/github/callback → JWT cookie set → /dashboard
+                                                                               ↓
+                                                             User installs GitHub App
+                                                                               ↓
+                         /auth/github/install/init → state nonce cookie set → GitHub App install page
+                                                                               ↓
+                                                 /auth/github/install?installation_id=...&state=...
+                                                                               ↓
+                                                             State verified → installationId saved
+```
+
+The installation flow uses a server-generated state nonce (set as a short-lived HTTP-only cookie) that GitHub echoes back in the callback. This prevents CSRF attacks against the installation endpoint.
 
 ---
 
-## API overview
+## API reference
+
+### Auth
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/auth/github` | — | Initiate GitHub OAuth login |
+| `GET` | `/auth/github/callback` | — | OAuth callback; sets JWT cookie |
+| `GET` | `/auth/me` | Cookie | Get the current authenticated user |
+| `GET` | `/auth/github/install/init` | — | Begin GitHub App installation (sets CSRF state) |
+| `GET` | `/auth/github/install` | Cookie | Complete GitHub App installation callback |
+| `POST` | `/auth/logout` | Cookie | Clear the auth cookie |
+
+### Repos
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/repos` | JWT | List repositories accessible via the GitHub App |
+
+### Roasts
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/roast/start` | JWT | Start a roast job (returns `roastId` immediately) |
+| `GET` | `/roast/status/:roastId` | JWT | Poll roast status: `PENDING \| PROCESSING \| DONE \| FAILED` |
+| `GET` | `/roast/:shareSlug` | JWT | Get a completed roast by its public share slug |
+| `GET` | `/roast` | JWT | List all roasts for the current user |
+
+### Health
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/auth/github` | Start GitHub OAuth |
-| `GET` | `/auth/github/callback` | OAuth callback, sets JWT cookie |
-| `GET` | `/auth/me` | Get current user |
-| `GET` | `/auth/github/install` | Capture GitHub App installation |
-| `POST` | `/auth/logout` | Clear auth cookie |
-| `GET` | `/repos` | List connected repos (protected) |
+| `GET` | `/health` | Returns `200 OK` |
+
+---
+
+## Roast result schema
+
+```typescript
+{
+  roastSummary: string;           // 2-3 sentence overall verdict
+  funnyObservations: string[];    // 5+ specific observations
+  overallScore: number;           // 1–100
+  codeQualityScore: number;       // 1–100
+  securityScore: number;          // 1–100
+  developerClassification: {
+    title: string;                // e.g. "Vibe Coder"
+    tagline: string;              // short savage one-liner
+    tellTaleSigns: string[];      // 4-5 things spotted in the actual code
+  };
+  securityFindings: {
+    severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
+    category: string;
+    title: string;
+    description: string;
+    filePath: string | null;
+    lineNumber: number | null;
+  }[];
+}
+```
 
 ---
 
@@ -156,10 +272,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
 # Backend
-cd backend && npm run build && npm start
+cd backend
+npm run build
+npm start
 
 # Frontend
-cd frontend && npm run build && npm start
+cd frontend
+npm run build
+npm start
 ```
 
 ---

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-const page = () => {
+const LoginPage = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
@@ -70,4 +70,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default LoginPage;
