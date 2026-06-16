@@ -30,6 +30,7 @@ export function useRepos() {
     queryKey: ['repos'],
     queryFn: fetchRepos,
     retry: false,
+    refetchOnWindowFocus: false
   });
 
   return { repos, isLoading, isError, error };
