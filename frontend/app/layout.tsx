@@ -4,6 +4,7 @@ import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { Analytics } from "@vercel/analytics/next";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -34,7 +35,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col dark">
         <main>
           <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              {children}
+              <Analytics />
+            </AuthProvider>
           </QueryProvider>
         </main>
         <Toaster />
