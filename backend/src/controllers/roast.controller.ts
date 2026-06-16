@@ -71,7 +71,7 @@ export const getRoast = async (req: Request, res: Response, next: NextFunction) 
 
   try {
     const roast = await prisma.roast.findUnique({
-      where: { id },
+      where: { shareSlug: id },
       include: { securityFindings: true },
     });
 
