@@ -1,6 +1,4 @@
-import { type RoastResult } from '../_types/roast';
-
-export const DUMMY_ROAST: RoastResult = {
+export const DUMMY_ROAST = {
   repo: 'acme-corp/backend-api',
   roastSummary:
     "This codebase reads like it was written during a hackathon, abandoned for six months, then handed to an intern with a 'good luck' sticky note. There's enough hardcoded credentials to make a penetration tester retire early, and the error handling strategy appears to be 'hope for the best.' The git history tells a story of escalating regret.",
