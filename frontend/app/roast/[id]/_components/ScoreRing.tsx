@@ -50,13 +50,13 @@ export function ScoreRing({ score, label }: ScoreRingProps) {
           />
         </svg>
         <div className="absolute flex flex-col items-center leading-none">
-          <span className="text-xl font-bold text-[#EDEDED]">{score}</span>
-          <span className="text-xs font-bold mt-0.5" style={{ color }}>{scoreGrade(score)}</span>
+          <span className="text-2xl font-bold text-[#EDEDED]">{score}</span>
+          <span className="text-sm font-bold mt-0.5" style={{ color }}>{scoreGrade(score)}</span>
         </div>
       </div>
       <div className="text-center">
-        <p className="text-xs text-[#666666] uppercase tracking-widest">{label}</p>
-        <p className="text-xs text-[#444444] mt-0.5 italic">{scoreTagline(score)}</p>
+        <p className="text-sm text-[#666666] uppercase tracking-widest">{label}</p>
+        <p className="text-sm text-[#444444] mt-0.5 italic">{scoreTagline(score)}</p>
       </div>
     </div>
   );

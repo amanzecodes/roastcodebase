@@ -55,18 +55,18 @@ function FindingCard({ finding }: { finding: SecurityFinding }) {
           ) : (
             <span className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${styles.dot}`} />
           )}
-          <span className="text-sm font-semibold text-[#EDEDED] truncate">{finding.title}</span>
+          <span className="text-base font-semibold text-[#EDEDED] truncate">{finding.title}</span>
         </div>
         <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${styles.badge}`}>
           {finding.severity}
         </span>
       </div>
-      <p className="text-xs text-[#555555] mb-2 font-medium">{finding.category}</p>
-      <p className="text-sm text-[#777777] leading-relaxed">{finding.description}</p>
+      <p className="text-sm text-[#555555] mb-2 font-medium">{finding.category}</p>
+      <p className="text-base text-[#777777] leading-relaxed">{finding.description}</p>
       {(finding.filePath || finding.lineNumber) && (
         <div className="mt-3 flex items-center gap-1.5">
           <FileIcon />
-          <code className="text-xs text-[#555555] font-mono">
+          <code className="text-sm text-[#555555] font-mono">
             {finding.filePath}
             {finding.lineNumber ? `:${finding.lineNumber}` : ''}
           </code>
@@ -88,7 +88,7 @@ export function SecurityFindings({ findings }: SecurityFindingsProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-xs font-semibold text-[#555555] uppercase tracking-widest">Security Findings</h2>
+          <h2 className="text-sm font-semibold text-[#555555] uppercase tracking-widest">Security Findings</h2>
         </div>
         <div className="flex items-center gap-2">
           {criticalCount > 0 && (

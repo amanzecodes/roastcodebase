@@ -17,9 +17,9 @@ export function RoastHeader({ repo }: RoastHeaderProps) {
     <div>
       <div className="flex items-center gap-2 mb-1">
         <GitHubIcon />
-        <span className="text-sm text-[#555555] font-mono">{repo}</span>
+        <span className="text-base text-[#555555] font-mono">{repo}</span>
       </div>
-      <h1 className="text-2xl font-bold text-[#EDEDED]">The Verdict</h1>
+      <h1 className="text-4xl font-bold text-[#EDEDED]">The Verdict</h1>
     </div>
   );
 }
