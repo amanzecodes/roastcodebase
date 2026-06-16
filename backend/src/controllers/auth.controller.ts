@@ -57,10 +57,11 @@ export const githubCallbackHandler = (req: Request, res: Response) => {
     { expiresIn: '7d' },
   );
 
+  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('singe_authentication_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -111,11 +112,12 @@ export const logout = (_req: Request, res: Response) => {
 export const initiateGitHubAppInstall = (_req: Request, res: Response) => {
   const state = nanoid(32);
 
+  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('singe_install_state', state, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax', // must be lax — the callback is a cross-site redirect from GitHub
-    maxAge: 10 * 60 * 1000, // 10 minutes
+    secure: isProd,
+    sameSite: 'lax',
+    maxAge: 10 * 60 * 1000,
   });
 
   res.redirect(
