@@ -8,10 +8,8 @@ import { RepoCard } from './_components/RepoCard';
 import { EmptyState } from './_components/EmptyState';
 import { useRoastRepo } from '@/hooks/useRoastRepo';
 
-const GITHUB_APP_INSTALL_URL = 'https://github.com/apps/roastcodebase/installations/new';
-
 const handleConnect = () => {
-  window.location.href = GITHUB_APP_INSTALL_URL;
+  window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github/install/init`;
 };
 
 export default function DashboardPage() {

@@ -11,6 +11,7 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'FORBIDDEN'
   | 'FETCH_ROAST_FAILED'
+  | 'CAPACITY'
 
 export class AppError extends Error {
   constructor(
