@@ -102,7 +102,12 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
 };
 
 export const logout = (_req: Request, res: Response) => {
-  res.clearCookie('singe_authentication_token');
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('singe_authentication_token', {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+  });
   res.json({ success: true });
 };
 
