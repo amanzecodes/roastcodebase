@@ -5,11 +5,42 @@ import { generateRoast } from '../services/roast.js';
 import { AppError } from '../types/errors.js';
 import { nanoid } from 'nanoid';
 
+const MAX_CONCURRENT_ROASTS = 3;
+const ROAST_TIMEOUT_MS = 5 * 60 * 1000;
+
+// GitHub constraints: owner/repo names are alphanumeric + hyphens/dots/underscores, max 100 chars.
+// Branch names allow forward slashes too (e.g. feature/my-branch), max 255 chars.
+const GITHUB_OWNER_RE  = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,98}[a-zA-Z0-9]?$/;
+const GITHUB_REPO_RE   = /^[a-zA-Z0-9._-]{1,100}$/;
+const BRANCH_RE        = /^[a-zA-Z0-9./_-]{1,255}$/;
+
+let activeRoasts = 0;
+
+// Call once at boot. Resets any job left in PROCESSING from a previous crash.
+export async function recoverStuckRoasts(): Promise<void> {
+  const { count } = await prisma.roast.updateMany({
+    where: { status: 'PROCESSING' },
+    data: { status: 'FAILED', errorMessage: 'Server restarted during processing' },
+  });
+  if (count > 0) {
+    console.warn(`Recovered ${count} stuck roast(s) from previous run`);
+  }
+}
+
 export const startRoast = async (req: Request, res: Response, next: NextFunction) => {
   const { repoOwner, repoName, defaultBranch } = req.body;
 
-  if (!repoOwner || !repoName || !defaultBranch) {
+  if (
+    typeof repoOwner !== 'string'     || !GITHUB_OWNER_RE.test(repoOwner) ||
+    typeof repoName !== 'string'      || !GITHUB_REPO_RE.test(repoName)   ||
+    typeof defaultBranch !== 'string' || !BRANCH_RE.test(defaultBranch)
+  ) {
     next(new AppError(400, 'MISSING_PARAMS', 'repoOwner, repoName and defaultBranch are required'));
+    return;
+  }
+
+  if (activeRoasts >= MAX_CONCURRENT_ROASTS) {
+    next(new AppError(429, 'CAPACITY', 'Server is busy — please try again in a moment'));
     return;
   }
 
@@ -157,6 +188,10 @@ async function processRoast(
   repoName: string,
   defaultBranch: string,
 ) {
+  activeRoasts++;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(new Error('Roast timed out after 5 minutes')), ROAST_TIMEOUT_MS);
+
   try {
     await prisma.roast.update({
       where: { id: roastId },
@@ -181,7 +216,7 @@ async function processRoast(
       data: { fileCount: files.length },
     });
 
-    const result = await generateRoast(repoOwner, repoName, files);
+    const result = await generateRoast(repoOwner, repoName, files, controller.signal);
 
     if (result.securityFindings.length > 0) {
       await prisma.securityFinding.createMany({
@@ -214,5 +249,8 @@ async function processRoast(
         errorMessage: err instanceof Error ? err.message : 'Unknown error',
       },
     });
+  } finally {
+    clearTimeout(timeoutId);
+    activeRoasts--;
   }
 }
