@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const { repos, isLoading: reposLoading, isError, error } = useRepos();
   const router = useRouter();
   const { mutate: startRoast, isPending, variables, error: roastError } = useRoastRepo({
-    onSuccess: ({ roastId }) => router.push(`/roast/${roastId}`),
+    onSuccess: ({ roastId }) => router.push(`/roast/status/${roastId}`),
   });
 
   useEffect(() => {

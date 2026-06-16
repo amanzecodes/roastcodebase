@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { type RepoFile } from "./github.js";
-import type { SecurityFinding } from "../../generated/prisma/client.js";
+import type { FindingSeverity } from "../../generated/prisma/client.js";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -12,6 +12,15 @@ export interface DeveloperClassification {
   tellTaleSigns: string[];
 }
 
+export interface RoastSecurityFinding {
+  severity: FindingSeverity;
+  category: string;
+  title: string;
+  description: string;
+  filePath: string | null;
+  lineNumber: number | null;
+}
+
 export interface RoastResult {
   roastSummary: string;
   funnyObservations: string[];
@@ -19,8 +28,66 @@ export interface RoastResult {
   codeQualityScore: number;
   securityScore: number;
   developerClassification: DeveloperClassification;
-  securityFindings: SecurityFinding[];
+  securityFindings: RoastSecurityFinding[];
 }
+
+const submitRoastTool: Anthropic.Tool = {
+  name: "submit_roast",
+  description: "Submit the completed roast analysis results for the repository",
+  input_schema: {
+    type: "object",
+    properties: {
+      roastSummary: {
+        type: "string",
+        description: "A 2-3 sentence savage overall verdict on the codebase",
+      },
+      funnyObservations: {
+        type: "array",
+        items: { type: "string" },
+        description: "At least 5 specific funny but accurate observations about the code",
+      },
+      overallScore: { type: "number", description: "Overall score 1-100" },
+      codeQualityScore: { type: "number", description: "Code quality score 1-100" },
+      securityScore: { type: "number", description: "Security score 1-100" },
+      developerClassification: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          tagline: { type: "string" },
+          tellTaleSigns: { type: "array", items: { type: "string" } },
+        },
+        required: ["title", "tagline", "tellTaleSigns"],
+      },
+      securityFindings: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            severity: {
+              type: "string",
+              enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+            },
+            category: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            filePath: { anyOf: [{ type: "string" }, { type: "null" }] },
+            lineNumber: { anyOf: [{ type: "number" }, { type: "null" }] },
+          },
+          required: ["severity", "category", "title", "description", "filePath", "lineNumber"],
+        },
+      },
+    },
+    required: [
+      "roastSummary",
+      "funnyObservations",
+      "overallScore",
+      "codeQualityScore",
+      "securityScore",
+      "developerClassification",
+      "securityFindings",
+    ],
+  },
+};
 
 function buildPrompt(owner: string, repo: string, files: RepoFile[]): string {
   const fileTree = files
@@ -63,39 +130,7 @@ For the developer classification, pick ONE from the following list that best fit
 
 Each classification must have a short savage tagline and 4-5 tell-tale signs spotted in the actual code.
 
-Respond ONLY with a valid JSON object matching this exact schema. No preamble, no markdown, no backticks — raw JSON only:
-
-{
-  "roastSummary": "A 2-3 sentence savage overall verdict on the codebase",
-  "funnyObservations": [
-    "Specific funny but accurate observation about the code",
-    "Another observation",
-    "At least 5 observations total"
-  ],
-  "overallScore": <number 1-100>,
-  "codeQualityScore": <number 1-100>,
-  "securityScore": <number 1-100>,
-  "developerClassification": {
-    "title": "One of the classification titles above",
-    "tagline": "A short savage tagline for this classification",
-    "tellTaleSigns": [
-      "Specific thing spotted in this actual codebase",
-      "Another specific thing",
-      "At least 4 signs total"
-    ]
-  },
-  "securityFindings": [
-    {
-      "severity": "CRITICAL | HIGH | MEDIUM | LOW | INFO",
-      "category": "e.g. Hardcoded Secret, SQL Injection, Missing Auth, etc.",
-      "title": "Short title of the finding",
-      "description": "Clear explanation of the vulnerability and why it is dangerous",
-      "filePath": "path/to/file.ts or null",
-      "lineNumber": null
-    }
-  ]
-}`;
-
+When you have finished the analysis, call the submit_roast tool with your findings.`;
 }
 
 export async function generateRoast(
@@ -106,30 +141,18 @@ export async function generateRoast(
   const prompt = buildPrompt(owner, repo, files);
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-5",
-    max_tokens: 20000,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+    model: "claude-opus-4-8",
+    max_tokens: 16000,
+    tools: [submitRoastTool],
+    tool_choice: { type: "tool", name: "submit_roast" },
+    messages: [{ role: "user", content: prompt }],
   });
 
-  const text = message.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("");
+  const toolUseBlock = message.content.find((b) => b.type === "tool_use");
 
-  // Strip any accidental markdown fences
-  const clean = text.replace(/```json|```/g, "").trim();
-
-  let result: RoastResult;
-  try {
-    result = JSON.parse(clean);
-  } catch {
-    throw new Error(`Claude returned invalid JSON: ${clean.slice(0, 200)}`);
+  if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
+    throw new Error("Claude did not return a tool_use block");
   }
 
-  return result;
+  return toolUseBlock.input as RoastResult;
 }

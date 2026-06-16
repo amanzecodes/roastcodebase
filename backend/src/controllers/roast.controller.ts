@@ -66,6 +66,42 @@ export const startRoast = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const getRoastStatus = async (req: Request, res: Response, next: NextFunction) => {
+  const roastId = req.params.roastId as string;
+
+  if (!UUID_RE.test(roastId)) {
+    next(new AppError(400, 'MISSING_PARAMS', 'Invalid roast ID'));
+    return;
+  }
+
+  try {
+    const roast = await prisma.roast.findUnique({
+      where: { id: roastId },
+      select: { userId: true, status: true, shareSlug: true, errorMessage: true },
+    });
+
+    if (!roast) {
+      next(new AppError(404, 'NOT_FOUND', 'Roast not found'));
+      return;
+    }
+
+    if (roast.userId !== req.userId) {
+      next(new AppError(403, 'FORBIDDEN', 'Forbidden'));
+      return;
+    }
+
+    res.json({
+      status: roast.status,
+      shareSlug: roast.shareSlug,
+      errorMessage: roast.errorMessage,
+    });
+  } catch {
+    next(new AppError(500, 'FETCH_ROAST_FAILED', 'Failed to fetch roast status'));
+  }
+};
+
 export const getRoast = async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id as string;
 
