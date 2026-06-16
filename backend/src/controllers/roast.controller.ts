@@ -63,7 +63,7 @@ export const startRoast = async (req: Request, res: Response, next: NextFunction
 
     const isNewDay = roastCountDate < today;
 
-    if (!isNewDay && user.roastCountToday >= 3) {
+    if (!isNewDay && user.roastCountToday >= 1) {
       next(new AppError(429, 'RATE_LIMIT', 'Daily roast limit reached. Come back tomorrow.'));
       return;
     }
