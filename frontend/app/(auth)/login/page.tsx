@@ -4,11 +4,12 @@ import { FaGithub } from "react-icons/fa";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const LoginPage = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -17,6 +18,7 @@ const LoginPage = () => {
   }, [isAuthenticated, router]);
 
   const handleGitHubLogin = () => {
+    setIsPending(true);
     const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/g, "");
     const target = base ? `${base}/auth/github` : `/auth/github`;
     window.location.href = target;
@@ -56,14 +58,15 @@ const LoginPage = () => {
 
         <Button
           onClick={handleGitHubLogin}
-          className="p-5 cursor-pointer w-full sm:w-64 h-4 flex flex-row gap-3 active:translate-y-1 transition-all duration-100 ease-out"
+          disabled={isPending}
+          className="p-5 cursor-pointer w-full sm:w-64 h-4 flex flex-row gap-3 active:translate-y-1 transition-all duration-100 ease-out disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             boxShadow:
               "0 5px 0 rgba(90,90,90,0.7), 0 10px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6)",
           }}
         >
           <FaGithub />
-          Continue with Github
+          {isPending ? "Redirecting..." : "Continue with Github"}
         </Button>
       </div>
     </section>
