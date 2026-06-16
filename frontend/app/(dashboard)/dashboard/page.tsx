@@ -7,6 +7,7 @@ import { useRepos } from '@/hooks/useRepos';
 import { RepoCard } from './_components/RepoCard';
 import { EmptyState } from './_components/EmptyState';
 import { useRoastRepo } from '@/hooks/useRoastRepo';
+import { useLogout } from '@/hooks/useLogout';
 
 const handleConnect = () => {
   window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github/install/init`;
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { repos, isLoading: reposLoading, isError, error } = useRepos();
   const router = useRouter();
+  const { logout, isPending: isLoggingOut } = useLogout();
   const { mutate: startRoast, isPending, variables, error: roastError } = useRoastRepo({
     onSuccess: ({ roastId }) => router.push(`/roast/status/${roastId}`),
   });
@@ -39,14 +41,23 @@ export default function DashboardPage() {
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          {user?.avatarUrl && (
-            <img src={user.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full" />
-          )}
-          <div>
-            <h1 className="text-[#EDEDED] font-bold text-xl">Hey, {user?.username} 👋</h1>
-            <p className="text-[#888888] text-sm">Ready to get roasted?</p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            {user?.avatarUrl && (
+              <img src={user.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full" />
+            )}
+            <div>
+              <h1 className="text-[#EDEDED] font-bold text-xl">Hey, {user?.username} 👋</h1>
+              <p className="text-[#888888] text-sm">Ready to get roasted?</p>
+            </div>
           </div>
+          <button
+            onClick={() => logout()}
+            disabled={isLoggingOut}
+            className="text-sm text-[#888888] hover:text-[#EDEDED] transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {isLoggingOut ? "Signing out..." : "Sign out"}
+          </button>
         </div>
 
         {/* Repos section header */}
