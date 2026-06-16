@@ -2,6 +2,8 @@ import { type Request, type Response, type NextFunction } from 'express';
 import { type Profile } from 'passport-github2';
 import { prisma } from '../lib/prisma.js';
 import jwt from 'jsonwebtoken';
+import { nanoid } from 'nanoid';
+import { timingSafeEqual } from 'crypto';
 import { AppError } from '../types/errors.js';
 
 export interface GitHubUser {
@@ -9,7 +11,6 @@ export interface GitHubUser {
   username: string;
   email: string | null;
   avatarUrl: string | null;
-  accessToken: string;
 }
 
 export const githubStrategyCallback = async (
@@ -24,7 +25,6 @@ export const githubStrategyCallback = async (
 
     const updateData: Record<string, string> = {
       username: profile.username || profile.displayName,
-      accessToken: _accessToken,
     };
 
     if (profile.photos?.[0]?.value !== undefined) {
@@ -39,7 +39,6 @@ export const githubStrategyCallback = async (
         username: profile.username || profile.displayName,
         email,
         avatarUrl: avatar,
-        accessToken: _accessToken,
       },
     });
 
@@ -106,11 +105,42 @@ export const logout = (_req: Request, res: Response) => {
   res.json({ success: true });
 };
 
-export const installGitHubApp = async (req: Request, res: Response) => {
-  const { installation_id } = req.query;
-  const token = req.cookies.singe_authentication_token;
+// Starts the GitHub App installation flow. Generates a state nonce, stores it
+// in a short-lived cookie, then redirects to GitHub. The nonce is echoed back
+// by GitHub in the callback, where it is verified before any DB write happens.
+export const initiateGitHubAppInstall = (_req: Request, res: Response) => {
+  const state = nanoid(32);
 
-  if (!token || !installation_id) {
+  res.cookie('singe_install_state', state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax', // must be lax — the callback is a cross-site redirect from GitHub
+    maxAge: 10 * 60 * 1000, // 10 minutes
+  });
+
+  res.redirect(
+    `https://github.com/apps/${process.env.GITHUB_APP_SLUG}/installations/new?state=${state}`,
+  );
+};
+
+export const installGitHubApp = async (req: Request, res: Response) => {
+  const { installation_id, state } = req.query;
+  const token = req.cookies.singe_authentication_token;
+  const cookieState: string | undefined = req.cookies.singe_install_state;
+
+  // Always clear the state cookie so it can't be replayed
+  res.clearCookie('singe_install_state');
+
+  const installationIdStr = typeof installation_id === 'string' ? installation_id : '';
+  const stateParam = typeof state === 'string' ? state : '';
+
+  const stateValid =
+    !!cookieState &&
+    !!stateParam &&
+    cookieState.length === stateParam.length &&
+    timingSafeEqual(Buffer.from(cookieState), Buffer.from(stateParam));
+
+  if (!token || !/^\d{1,20}$/.test(installationIdStr) || !stateValid) {
     res.redirect(`${process.env.CLIENT_URL}/login?error=missing_params`);
     return;
   }
@@ -119,7 +149,7 @@ export const installGitHubApp = async (req: Request, res: Response) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
     await prisma.user.update({
       where: { id: payload.id },
-      data: { installationId: installation_id as string },
+      data: { installationId: installationIdStr },
     });
 
     res.redirect(`${process.env.CLIENT_URL}/dashboard`);

@@ -34,6 +34,7 @@ router.get(
 
 router.get("/me", authController.getMe);
 
+router.get("/github/install/init", authController.initiateGitHubAppInstall);
 router.get("/github/install", authController.installGitHubApp);
 
 router.post("/logout", authController.logout);
